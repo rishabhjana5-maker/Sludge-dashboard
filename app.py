@@ -30,7 +30,6 @@ preset = st.sidebar.selectbox(
     ]
 )
 
-# Default values based on preset
 if preset == "Preset A: High-Organic Municipal Sludge (Clean)":
     def_id, def_src, def_qty = "SLG-2026-001", "Municipal STP - Zone A", 25.0
     def_moist, def_org = 78, 68
@@ -55,23 +54,23 @@ quantity = st.sidebar.number_input("Batch Quantity (Tonnes/Day)", min_value=1.0,
 st.sidebar.subheader("2. Characterization Data")
 moisture = st.sidebar.slider("Moisture Content (%)", 10, 98, def_moist)
 organic_matter = st.sidebar.slider("Organic Matter (% Dry Solids)", 10, 90, def_org)
+
+contam_options = [
+    "Screened - Compliant (Low Heavy Metals)",
+    "Pending / Incomplete Screening",
+    "Flagged - Exceeds Contaminant Limits"
+]
 contaminant_status = st.sidebar.selectbox(
     "Contaminant-Screening Status",
-    [
-        "Screened - Compliant (Low Heavy Metals)",
-        "Pending / Incomplete Screening",
-        "Flagged - Exceeds Contaminant Limits"
-    ],
-    index=[
-        "Screened - Compliant (Low Heavy Metals)",
-        "Pending / Incomplete Screening",
-        "Flagged - Exceeds Contaminant Limits"
-    ].index(def_contam)
+    contam_options,
+    index=contam_options.index(def_contam)
 )
+
+conf_options = ["High (Lab Verified)", "Medium (Partial Lab)", "Low (Estimated)"]
 data_confidence = st.sidebar.selectbox(
     "Data Confidence Level",
-    ["High (Lab Verified)", "Medium (Partial Lab)", "Low (Estimated)"],
-    index=["High (Lab Verified)", "Medium (Partial Lab)", "Low (Estimated)"].index(def_conf)
+    conf_options,
+    index=conf_options.index(def_conf)
 )
 
 # --- SIDEBAR: ADJUSTABLE WEIGHTS ---
@@ -94,7 +93,6 @@ col2.metric("Quantity", f"{quantity} T/day")
 col3.metric("Moisture / Organics", f"{moisture}% / {organic_matter}%")
 col4.metric("Data Confidence", data_confidence.split(" ")[0])
 
-# Gate Logic
 gate_blocked = False
 if contaminant_status == "Flagged - Exceeds Contaminant Limits":
     gate_blocked = True
@@ -118,8 +116,6 @@ st.divider()
 # --- STEP 5 & 6: DYNAMIC SCORING ENGINE ---
 st.subheader("Step 5–7: Candidate Pathway Comparison & Weighted Scoring")
 
-# Base pathway profiles (1 to 10 scale; illustrative engineering estimates)
-# Dynamic adjustments based on user inputs (moisture & organic content)
 dewater_suit = 9.5 if moisture > 75 else 4.0
 drying_suit = 8.0 if moisture <= 80 else 5.0
 compost_suit = 8.5 if (organic_matter >= 50 and moisture <= 80) else 4.5
@@ -131,20 +127,20 @@ pathways = [
     {
         "Pathway": "Mechanical Dewatering",
         "Suitability": dewater_suit,
-        "Energy": 8.5,      # Low energy
-        "Cost": 8.5,        # Low cost
+        "Energy": 8.5,
+        "Cost": 8.5,
         "Env_Safety": 7.5,
-        "Recovery": 4.0,    # Water recovery only
+        "Recovery": 4.0,
         "Status": "Eligible",
         "Caution": "Produces wet sludge cake requiring secondary treatment/disposal; polymer dosing needed."
     },
     {
         "Pathway": "Thermal Drying",
         "Suitability": drying_suit,
-        "Energy": 4.0,      # High heat energy
+        "Energy": 4.0,
         "Cost": 5.0,
         "Env_Safety": 7.5,
-        "Recovery": 7.0,    # Dry biosolid fuel/pellets
+        "Recovery": 7.0,
         "Status": "Eligible",
         "Caution": "High thermal energy demand; requires odor and dust control systems."
     },
@@ -154,7 +150,7 @@ pathways = [
         "Energy": 8.0,
         "Cost": 8.0,
         "Env_Safety": 7.0 if not gate_blocked else 1.0,
-        "Recovery": 8.5,    # Soil conditioner
+        "Recovery": 8.5,
         "Status": "BLOCKED (Contamination)" if gate_blocked else "Eligible",
         "Caution": "Requires bulking agents, large land area, and strict heavy-metal compliance."
     },
@@ -164,7 +160,7 @@ pathways = [
         "Energy": 7.5,
         "Cost": 6.0,
         "Env_Safety": 8.0 if not gate_blocked else 1.0,
-        "Recovery": 9.5,    # Biogas + digestate
+        "Recovery": 9.5,
         "Status": "BLOCKED (Contamination)" if gate_blocked else "Eligible",
         "Caution": "Sensitive to toxic shock loads; requires 15–30 day retention and biogas handling."
     },
@@ -174,17 +170,17 @@ pathways = [
         "Energy": 4.5,
         "Cost": 4.0,
         "Env_Safety": 6.5,
-        "Recovery": 7.5,    # Heat/syngas
+        "Recovery": 7.5,
         "Status": "Eligible (Review Required)",
         "Caution": "Requires pre-drying, strict flue-gas scrubbing, and fly-ash disposal."
     },
     {
         "Pathway": "Vitrification (Optional Advanced)",
         "Suitability": vitrif_suit,
-        "Energy": 2.0,      # Very high >1300°C energy
+        "Energy": 2.0,
         "Cost": 2.5,
-        "Env_Safety": 8.5,  # Immobilizes heavy metals
-        "Recovery": 8.0,    # Inert glass slag aggregate
+        "Env_Safety": 8.5,
+        "Recovery": 8.0,
         "Status": "Optional Feasibility Only",
         "Caution": "Not a default solution; extreme energy demand and off-gas controls require independent study."
     }
@@ -192,7 +188,6 @@ pathways = [
 
 df = pd.DataFrame(pathways)
 
-# Calculate weighted score (out of 100)
 df["Weighted Score (/100)"] = (
     (df["Suitability"] * w_suitability) +
     (df["Energy"] * w_energy) +
@@ -203,11 +198,9 @@ df["Weighted Score (/100)"] = (
 
 df["Weighted Score (/100)"] = df["Weighted Score (/100)"].round(1)
 
-# Enforce Gate Rule: Blocked pathways cannot rank at the top
 df["Sort_Key"] = df.apply(lambda r: -1 if "BLOCKED" in r["Status"] else r["Weighted Score (/100)"], axis=1)
 df = df.sort_values(by="Sort_Key", ascending=False).drop(columns=["Sort_Key"]).reset_index(drop=True)
 
-# Display Table and Bar Chart side-by-side
 chart_col, table_col = st.columns([1, 1.4])
 
 with chart_col:
@@ -225,15 +218,34 @@ st.divider()
 # --- STEP 8: BATCH ASSESSMENT SUMMARY REPORT ---
 st.subheader("Step 8: Batch Assessment Summary & Expert Hand-off")
 
-eligible_df = df[~df["Status"].str.contains("BLOCKED")]
+eligible_df = df[~df["Status"].str.contains("BLOCKED")].reset_index(drop=True)
 top_pathway = eligible_df.iloc[0]["Pathway"]
 top_score = eligible_df.iloc[0]["Weighted Score (/100)"]
 
-report_text = f"""============================================================
-S³ – SMART SLUDGE SELECTION & RESOURCE RECOVERY SUMMARY
-============================================================
-Generated On:      {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-Batch ID:          {batch_id}
-Source:            {source}
-Quantity:          {quantity} Tonnes/day
-Moisture Content:  {moisture}%
+gate_msg = (
+    "BLOCKED - Non-compliant contaminant levels detected. Biological pathways restricted."
+    if gate_blocked
+    else "PASSED / PROVISIONAL - Eligible for technical review."
+)
+
+report_lines = [
+    "============================================================",
+    "S3 - SMART SLUDGE SELECTION & RESOURCE RECOVERY SUMMARY",
+    "============================================================",
+    f"Generated On:      {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+    f"Batch ID:          {batch_id}",
+    f"Source:            {source}",
+    f"Quantity:          {quantity} Tonnes/day",
+    f"Moisture Content:  {moisture}%",
+    f"Organic Matter:    {organic_matter}% (Dry Solids)",
+    f"Contaminants:      {contaminant_status}",
+    f"Data Confidence:   {data_confidence}",
+    "",
+    "COMPLIANCE GATE STATUS:",
+    gate_msg,
+    "",
+    "TOP PRELIMINARY SHORTLISTED PATHWAY:",
+    f"-> {top_pathway} (Weighted Score: {top_score}/100)",
+    "",
+    "WEIGHTS APPLIED:",
+    f"Suitability: {w_suitability}/10 | Energy: {w_energy}/10 | Cost: {w_cost}/10 | Env Safety: {w_env}/10 | Recovery: {w_recovery}/10",
