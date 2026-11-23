@@ -4,7 +4,6 @@ from datetime import datetime
 
 st.set_page_config(page_title="S³ – Smart Sludge Selection System", page_icon="♻️", layout="wide")
 
-# --- HEADER & DISCLAIMER ---
 st.title("♻️ S³ – Smart Sludge Selection & Resource Recovery System")
 st.caption("Preliminary Decision-Support Framework | Track 1: Sustainable Technologies | Idea ID: SEVA57826")
 st.info(
@@ -230,3 +229,5 @@ with tab1:
             "Nutrient-Rich Organic Compost",
             "Leachate collection required; must pass CPCB heavy-metal limits before agricultural application."
         ),
+        "Anaerobic Digestion": (
+            "Biogas (Methane) + Stabilized Digestate",
