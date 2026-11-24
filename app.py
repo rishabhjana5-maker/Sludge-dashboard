@@ -2,232 +2,218 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 
-st.set_page_config(page_title="S³ – Smart Sludge Selection System", page_icon="♻️", layout="wide")
+# ---------------------------------------------------------
+# 1. PAGE CONFIGURATION & HEADER
+# ---------------------------------------------------------
+st.set_page_config(
+    page_title="S³ – Smart Sludge Selection & Resource Recovery System",
+    page_icon="♻️",
+    layout="wide"
+)
 
 st.title("♻️ S³ – Smart Sludge Selection & Resource Recovery System")
-st.caption("Preliminary Decision-Support Framework | Track 1: Sustainable Technologies | Idea ID: SEVA57826")
+st.markdown(
+    "**Seva First Innovation Challenge (`SEVA57826`)** | *Digital Demonstrator using Illustrative Synthetic Data*"
+)
 st.info(
-    "**Illustrative Demonstrator Disclaimer:** This MVP uses **clearly labelled synthetic criteria** for early-stage planning. "
-    "It does not certify sludge safety, replace certified laboratory analysis, or substitute statutory engineering approvals."
+    "**Disclaimer:** This demonstrator uses clearly labelled synthetic/illustrative data for preliminary decision support. "
+    "It does not certify sludge as safe, authorize treatment, or replace laboratory analysis, regulatory compliance, and qualified engineering approval."
 )
 
-# --- SIDEBAR INPUTS ---
-st.sidebar.header("1. Batch Registration & Profile")
+# ---------------------------------------------------------
+# 2. SYNTHETIC PRESET DATA & TREATMENT PATHWAY DATABASE
+# ---------------------------------------------------------
+SYNTHETIC_PRESETS = {
+    "Custom Batch Entry": None,
+    "Synthetic Batch A: High-Organic Municipal Primary Sludge": {
+        "batch_id": "SLG-2026-001",
+        "source": "Municipal Domestic STP",
+        "quantity_tpd": 45.0,
+        "moisture_pct": 88.0,
+        "organic_matter_pct": 72.0,
+        "contaminant_status": "Screened - Compliant",
+        "heavy_metals_flag": False,
+        "data_confidence": "High (Lab Verified Synthetic)",
+        "missing_params": []
+    },
+    "Synthetic Batch B: Semi-Dried Digested Cake (Low Moisture)": {
+        "batch_id": "SLG-2026-002",
+        "source": "Secondary Biological WWTP",
+        "quantity_tpd": 20.0,
+        "moisture_pct": 58.0,
+        "organic_matter_pct": 55.0,
+        "contaminant_status": "Screened - Compliant",
+        "heavy_metals_flag": False,
+        "data_confidence": "Medium (Estimated Synthetic)",
+        "missing_params": []
+    },
+    "Synthetic Batch C: Mixed Industrial-Municipal (Contaminated)": {
+        "batch_id": "SLG-2026-003",
+        "source": "Mixed Industrial-Municipal Inlet",
+        "quantity_tpd": 30.0,
+        "moisture_pct": 78.0,
+        "organic_matter_pct": 48.0,
+        "contaminant_status": "Non-Compliant / Elevated Contaminants",
+        "heavy_metals_flag": True,
+        "data_confidence": "High (Lab Verified Synthetic)",
+        "missing_params": []
+    },
+    "Synthetic Batch D: Incomplete Characterization Stream": {
+        "batch_id": "SLG-2026-004",
+        "source": "Decentralized Community STP",
+        "quantity_tpd": 10.0,
+        "moisture_pct": 85.0,
+        "organic_matter_pct": 60.0,
+        "contaminant_status": "Pending / Missing Screening",
+        "heavy_metals_flag": False,
+        "data_confidence": "Low (Incomplete Data)",
+        "missing_params": ["Contaminant Screening", "Pathogen Count"]
+    }
+}
 
-preset = st.sidebar.selectbox(
-    "Load Illustrative Synthetic Preset:",
-    [
-        "Custom Entry",
-        "Preset A: High-Organic Municipal Sludge (Clean)",
-        "Preset B: High-Moisture Raw Sludge (Missing Data)",
-        "Preset C: Industrial-Mixed Sludge (Contaminated)"
-    ]
+# Modular Treatment Pathways & Residue Management Map (All braces properly closed!)
+RESIDUE_MAP = {
+    "Mechanical Dewatering": {
+        "base_suitability": 8.5,
+        "energy_efficiency": 8.5,
+        "cost_efficiency": 8.5,
+        "env_safeguard": 7.5,
+        "resource_recovery": 4.0,
+        "est_energy_kwh_t": 45,
+        "est_cost_inr_t": 850,
+        "primary_output": "Dewatered Sludge Cake (20–30% Solids)",
+        "secondary_residue": "Filtrate/Centrate liquid (requires return to WWTP headworks)",
+        "safeguard_note": "Volume reduction step; does not stabilize pathogens or organic odor.",
+        "is_advanced": False
+    },
+    "Solar / Thermal Drying": {
+        "base_suitability": 7.5,
+        "energy_efficiency": 6.0,
+        "cost_efficiency": 6.5,
+        "env_safeguard": 7.5,
+        "resource_recovery": 7.0,
+        "est_energy_kwh_t": 180,
+        "est_cost_inr_t": 1900,
+        "primary_output": "Dried Biosolid Pellets (>85% Solids)",
+        "secondary_residue": "Condensate water & exhaust vapor",
+        "safeguard_note": "Requires odor control and dust explosion safeguards; solar hybrid lowers energy cost.",
+        "is_advanced": False
+    },
+    "Aerobic Composting": {
+        "base_suitability": 8.0,
+        "energy_efficiency": 8.0,
+        "cost_efficiency": 8.0,
+        "env_safeguard": 8.0,
+        "resource_recovery": 8.5,
+        "est_energy_kwh_t": 60,
+        "est_cost_inr_t": 1100,
+        "primary_output": "Nutrient-Rich Soil Conditioner / Organic Fertilizer",
+        "secondary_residue": "Leachate & screened rejects",
+        "safeguard_note": "Strictly prohibited for land application if heavy metals or toxic contaminants are present.",
+        "is_advanced": False
+    },
+    "Anaerobic Digestion (Biogas)": {
+        "base_suitability": 9.0,
+        "energy_efficiency": 9.0,
+        "cost_efficiency": 7.5,
+        "env_safeguard": 8.5,
+        "resource_recovery": 9.5,
+        "est_energy_kwh_t": 75,
+        "est_cost_inr_t": 1450,
+        "primary_output": "Biogas (Methane) + Stabilized Digestate",
+        "secondary_residue": "Liquid digestate supernatant & H2S scrubber waste",
+        "safeguard_note": "Ideal for high-moisture, high-organic sludge; requires gas-tight containment.",
+        "is_advanced": False
+    },
+    "Selected Thermal Treatment (Pyrolysis / Incineration)": {
+        "base_suitability": 7.0,
+        "energy_efficiency": 5.5,
+        "cost_efficiency": 5.0,
+        "env_safeguard": 6.5,
+        "resource_recovery": 7.5,
+        "est_energy_kwh_t": 320,
+        "est_cost_inr_t": 3400,
+        "primary_output": "Biochar / Heat Recovery & Sterile Ash",
+        "secondary_residue": "Fly ash, bottom ash & flue gas scrubber sludge",
+        "safeguard_note": "Requires prior dewatering and strict air-pollution control (APC) compliance.",
+        "is_advanced": False
+    },
+    "Vitrification (Optional Future Feasibility)": {
+        "base_suitability": 5.5,
+        "energy_efficiency": 3.0,
+        "cost_efficiency": 2.5,
+        "env_safeguard": 7.0,
+        "resource_recovery": 6.5,
+        "est_energy_kwh_t": 750,
+        "est_cost_inr_t": 6800,
+        "primary_output": "Inert Vitrified Slag / Glass Aggregate",
+        "secondary_residue": "High-temperature off-gas & volatile heavy metal condensates",
+        "safeguard_note": "OPTIONAL ADVANCED PATHWAY ONLY: Not a default solution. Requires independent feasibility, off-gas & cost evaluation.",
+        "is_advanced": True
+    }
+}
+
+# ---------------------------------------------------------
+# 3. SIDEBAR: STEP 1 & 2 - BATCH ENTRY & ADJUSTABLE WEIGHTS
+# ---------------------------------------------------------
+st.sidebar.header("Step 1 & 2: Sludge Batch Profile")
+preset_choice = st.sidebar.selectbox("Load Synthetic Demonstrator Preset", list(SYNTHETIC_PRESETS.keys()))
+preset = SYNTHETIC_PRESETS[preset_choice]
+
+batch_id = st.sidebar.text_input("Batch Unique ID", value=preset["batch_id"] if preset else "SLG-2026-005")
+source = st.sidebar.selectbox(
+    "Sludge Source",
+    ["Municipal Domestic STP", "Secondary Biological WWTP", "Mixed Industrial-Municipal Inlet", "Decentralized Community STP"],
+    index=0 if not preset else ["Municipal Domestic STP", "Secondary Biological WWTP", "Mixed Industrial-Municipal Inlet", "Decentralized Community STP"].index(preset["source"])
 )
+quantity_tpd = st.sidebar.number_input("Batch Quantity (Tonnes/Day)", min_value=1.0, max_value=500.0, value=preset["quantity_tpd"] if preset else 25.0)
+moisture_pct = st.sidebar.slider("Moisture Content (%)", min_value=30.0, max_value=99.0, value=preset["moisture_pct"] if preset else 82.0)
+organic_matter_pct = st.sidebar.slider("Volatile / Organic Matter (% of Dry Solids)", min_value=10.0, max_value=90.0, value=preset["organic_matter_pct"] if preset else 65.0)
 
-if preset == "Preset A: High-Organic Municipal Sludge (Clean)":
-    def_id, def_src, def_qty = "SLG-2026-001", "Municipal STP - Zone A", 25.0
-    def_moist, def_org = 78, 68
-    def_contam, def_conf = "Screened - Compliant (Low Heavy Metals)", "High (Lab Verified)"
-elif preset == "Preset B: High-Moisture Raw Sludge (Missing Data)":
-    def_id, def_src, def_qty = "SLG-2026-002", "Primary Clarifier - North", 40.0
-    def_moist, def_org = 92, 55
-    def_contam, def_conf = "Pending / Incomplete Screening", "Low (Estimated)"
-elif preset == "Preset C: Industrial-Mixed Sludge (Contaminated)":
-    def_id, def_src, def_qty = "SLG-2026-003", "CETP / Mixed Industrial Line", 15.0
-    def_moist, def_org = 65, 42
-    def_contam, def_conf = "Flagged - Exceeds Contaminant Limits", "Medium (Partial Lab)"
-else:
-    def_id, def_src, def_qty = "SLG-2026-004", "Municipal STP", 20.0
-    def_moist, def_org = 80, 60
-    def_contam, def_conf = "Screened - Compliant (Low Heavy Metals)", "High (Lab Verified)"
-
-batch_id = st.sidebar.text_input("Batch Unique ID", value=def_id)
-source = st.sidebar.text_input("Sludge Source / Origin", value=def_src)
-quantity = st.sidebar.number_input("Batch Quantity (Tonnes/Day)", min_value=1.0, max_value=1000.0, value=def_qty)
-
-st.sidebar.subheader("2. Characterization Data")
-moisture = st.sidebar.slider("Moisture Content (%)", 10, 98, def_moist)
-organic_matter = st.sidebar.slider("Organic Matter (% Dry Solids)", 10, 90, def_org)
-
-contam_options = [
-    "Screened - Compliant (Low Heavy Metals)",
-    "Pending / Incomplete Screening",
-    "Flagged - Exceeds Contaminant Limits"
-]
+contaminant_options = ["Screened - Compliant", "Pending / Missing Screening", "Non-Compliant / Elevated Contaminants"]
 contaminant_status = st.sidebar.selectbox(
     "Contaminant-Screening Status",
-    contam_options,
-    index=contam_options.index(def_contam)
+    contaminant_options,
+    index=0 if not preset else contaminant_options.index(preset["contaminant_status"])
 )
+heavy_metals_flag = st.sidebar.checkbox("Elevated Heavy Metals / Toxic Restriction Flag", value=preset["heavy_metals_flag"] if preset else False)
 
-conf_options = ["High (Lab Verified)", "Medium (Partial Lab)", "Low (Estimated)"]
+confidence_options = ["High (Lab Verified Synthetic)", "Medium (Estimated Synthetic)", "Low (Incomplete Data)"]
 data_confidence = st.sidebar.selectbox(
     "Data Confidence Level",
-    conf_options,
-    index=conf_options.index(def_conf)
+    confidence_options,
+    index=0 if not preset else confidence_options.index(preset["data_confidence"])
 )
 
-st.sidebar.subheader("3. Adjustable Scoring Weights")
-w_suitability = st.sidebar.slider("Technical Suitability", 1, 10, 8)
-w_energy = st.sidebar.slider("Low Energy Demand", 1, 10, 7)
-w_cost = st.sidebar.slider("Low Operating Cost", 1, 10, 7)
-w_env = st.sidebar.slider("Environmental & Residue Safety", 1, 10, 9)
-w_recovery = st.sidebar.slider("Resource Recovery Potential", 1, 10, 8)
+missing_params = st.sidebar.multiselect(
+    "Flagged Missing Parameters",
+    ["Contaminant Screening", "Pathogen Count", "Calorific Value", "Heavy Metal Assay"],
+    default=preset["missing_params"] if preset else []
+)
+
+include_vitrification = st.sidebar.checkbox("Include Vitrification (Optional Future Feasibility)", value=False)
+
+st.sidebar.divider()
+st.sidebar.header("Disclosed Scoring Weights (%)")
+w_suitability = st.sidebar.slider("Technical Suitability", 0, 50, 30)
+w_energy = st.sidebar.slider("Energy Efficiency", 0, 50, 20)
+w_cost = st.sidebar.slider("Operating Cost Efficiency", 0, 50, 20)
+w_env = st.sidebar.slider("Environmental & Residue Safeguards", 0, 50, 15)
+w_recovery = st.sidebar.slider("Resource Recovery Potential", 0, 50, 15)
+
 total_weight = w_suitability + w_energy + w_cost + w_env + w_recovery
+if total_weight != 100:
+    st.sidebar.warning(f"Weights sum to {total_weight}%. Scores will be normalized to 100%.")
 
-# --- NAVIGATION TABS ---
-tab1, tab2, tab3 = st.tabs([
-    "🧪 Single Batch Assessment (Steps 1–8)",
-    "📂 Bulk Lab CSV Screener",
-    "📊 Plant-Scale Impact Estimator"
-])
+# ---------------------------------------------------------
+# 4. STEP 3 & 4: DATA COMPLETENESS & MANDATORY REVIEW GATE
+# ---------------------------------------------------------
+st.subheader("1. Batch Summary, Data Confidence & Mandatory Review Gate")
 
-# ==============================================================================
-# TAB 1: SINGLE BATCH WORKFLOW
-# ==============================================================================
-with tab1:
-    st.subheader("Step 1–4: Batch Summary, Data Quality & Mandatory Review Gate")
+m1, m2, m3, m4 = st.columns(4)
+m1.metric("Batch ID", batch_id)
+m2.metric("Quantity", f"{quantity_tpd:.1f} TPD")
+m3.metric("Moisture / Organics", f"{moisture_pct:.0f}% / {organic_matter_pct:.0f}%")
+m4.metric("Data Confidence", data_confidence.split(" ")[0])
 
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Batch ID", batch_id)
-    col2.metric("Quantity", f"{quantity} T/day")
-    col3.metric("Moisture / Organics", f"{moisture}% / {organic_matter}%")
-    col4.metric("Data Confidence", data_confidence.split(" ")[0])
-
-    gate_blocked = False
-    if contaminant_status == "Flagged - Exceeds Contaminant Limits":
-        gate_blocked = True
-        st.error(
-            "🚨 **MANDATORY REVIEW GATE TRIGGERED (NON-COMPLIANT):** "
-            "Biological & agricultural pathways (Composting, Anaerobic Digestion) are **BLOCKED** regardless of weighted score."
-        )
-    elif contaminant_status == "Pending / Incomplete Screening" or data_confidence == "Low (Estimated)":
-        st.warning(
-            "⚠️ **DATA QUALITY CAUTION:** Screening is incomplete or confidence is low. "
-            "Laboratory verification is mandatory before finalizing treatment selection."
-        )
-    else:
-        st.success("✅ **COMPLIANCE GATE PASSED:** Batch meets preliminary screening thresholds for multi-pathway comparison.")
-
-    st.divider()
-
-    # --- STEP 5-7: SCORING & MATRIX ---
-    st.subheader("Step 5–7: Candidate Pathway Comparison & Weighted Scoring")
-
-    dewater_suit = 9.5 if moisture > 75 else 4.0
-    drying_suit = 8.0 if moisture <= 80 else 5.0
-    compost_suit = 8.5 if (organic_matter >= 50 and moisture <= 80) else 4.5
-    ad_suit = 9.0 if (organic_matter >= 55 and moisture >= 70) else 5.0
-    thermal_suit = 8.0 if (moisture <= 65 and organic_matter >= 45) else 4.5
-    vitrif_suit = 7.5 if moisture <= 50 else 3.5
-
-    pathways = [
-        {
-            "Pathway": "Mechanical Dewatering",
-            "Suitability": dewater_suit,
-            "Energy": 8.5,
-            "Cost": 8.5,
-            "Env_Safety": 7.5,
-            "Recovery": 4.0,
-            "Status": "Eligible",
-            "Caution": "Produces wet sludge cake requiring secondary treatment/disposal."
-        },
-        {
-            "Pathway": "Thermal Drying",
-            "Suitability": drying_suit,
-            "Energy": 4.0,
-            "Cost": 5.0,
-            "Env_Safety": 7.5,
-            "Recovery": 7.0,
-            "Status": "Eligible",
-            "Caution": "High thermal energy demand; requires odor and dust controls."
-        },
-        {
-            "Pathway": "Composting (Aerobic)",
-            "Suitability": compost_suit,
-            "Energy": 8.0,
-            "Cost": 8.0,
-            "Env_Safety": 1.0 if gate_blocked else 7.0,
-            "Recovery": 8.5,
-            "Status": "BLOCKED (Contamination)" if gate_blocked else "Eligible",
-            "Caution": "Requires bulking agents, land area, and heavy-metal compliance."
-        },
-        {
-            "Pathway": "Anaerobic Digestion",
-            "Suitability": ad_suit,
-            "Energy": 7.5,
-            "Cost": 6.0,
-            "Env_Safety": 1.0 if gate_blocked else 8.0,
-            "Recovery": 9.5,
-            "Status": "BLOCKED (Contamination)" if gate_blocked else "Eligible",
-            "Caution": "Sensitive to toxic shock loads; requires biogas handling."
-        },
-        {
-            "Pathway": "Thermal Treatment (Incineration/Pyrolysis)",
-            "Suitability": thermal_suit,
-            "Energy": 4.5,
-            "Cost": 4.0,
-            "Env_Safety": 6.5,
-            "Recovery": 7.5,
-            "Status": "Eligible (Review Required)",
-            "Caution": "Requires pre-drying, flue-gas scrubbing, and ash disposal."
-        },
-        {
-            "Pathway": "Vitrification (Optional Advanced)",
-            "Suitability": vitrif_suit,
-            "Energy": 2.0,
-            "Cost": 2.5,
-            "Env_Safety": 8.5,
-            "Recovery": 8.0,
-            "Status": "Optional Feasibility Only",
-            "Caution": "Not a default solution; extreme energy demand requires independent study."
-        }
-    ]
-
-    df = pd.DataFrame(pathways)
-    df["Weighted Score (/100)"] = (
-        (df["Suitability"] * w_suitability)
-        + (df["Energy"] * w_energy)
-        + (df["Cost"] * w_cost)
-        + (df["Env_Safety"] * w_env)
-        + (df["Recovery"] * w_recovery)
-    ) / (total_weight * 10) * 100
-    df["Weighted Score (/100)"] = df["Weighted Score (/100)"].round(1)
-
-    df["Sort_Key"] = df.apply(lambda r: -1 if "BLOCKED" in r["Status"] else r["Weighted Score (/100)"], axis=1)
-    df = df.sort_values(by="Sort_Key", ascending=False).drop(columns=["Sort_Key"]).reset_index(drop=True)
-
-    chart_col, table_col = st.columns([1, 1.4])
-    with chart_col:
-        st.markdown("**Preliminary Weighted Score Comparison**")
-        st.bar_chart(df.set_index("Pathway")["Weighted Score (/100)"])
-
-    with table_col:
-        st.markdown("**Decision Matrix & Key Cautions**")
-        st.dataframe(df[["Pathway", "Status", "Weighted Score (/100)", "Caution"]], use_container_width=True, hide_index=True)
-
-    st.divider()
-
-    # --- STEP 8: SUMMARY, RESIDUE PROFILE & DOWNLOAD ---
-    st.subheader("Step 8: Batch Assessment Summary & Expert Hand-off")
-
-    eligible_df = df[~df["Status"].str.contains("BLOCKED")].reset_index(drop=True)
-    top_pathway = eligible_df.loc[0, "Pathway"]
-    top_score = eligible_df.loc[0, "Weighted Score (/100)"]
-    gate_msg = "BLOCKED - Non-compliant contaminant levels detected." if gate_blocked else "PASSED / PROVISIONAL - Eligible for technical review."
-
-    residue_map = {
-        "Mechanical Dewatering": (
-            "Dewatered Sludge Cake (~25–30% solids)",
-            "Filtrate water returned to STP headworks; cake requires secondary stabilization."
-        ),
-        "Thermal Drying": (
-            "Dried Biosolid Pellets (>90% solids)",
-            "Condensate & exhaust air require scrubbers; pellets usable as fuel/soil conditioner if compliant."
-        ),
-        "Composting (Aerobic)": (
-            "Nutrient-Rich Organic Compost",
-            "Leachate collection required; must pass CPCB heavy-metal limits before agricultural application."
-        ),
-        "Anaerobic Digestion": (
-            "Biogas (Methane) + Stabilized Digestate",
+# Mandatory Compliance & Data-Quality Gate Logic
